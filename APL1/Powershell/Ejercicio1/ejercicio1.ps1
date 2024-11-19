@@ -26,7 +26,7 @@
     Este comando procesará los archivos situados en el directorio especificado y guardara los resultados en un CSV con el nombre especificado.
 
 .EXAMPLE
-    .\ProcesarJugadas.ps1 -d ".\Jugadas" -p 1
+    .\ProcesarJugadas.ps1 -directorio ".\Jugadas" -pantalla
     Este comando procesará el directorio 'jugadas' y mostrará los resultados en pantalla.
 #>
 
