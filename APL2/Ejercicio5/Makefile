@@ -1,11 +1,22 @@
-# Makefile para Ejercicio 5
-all: Ejercicio5_Cliente Ejercicio5_Servidor
+# Variables
+CXX = g++
+CXXFLAGS = -Wall -std=c++17
+SERVER_SRC = Ejercicio5_Servidor.cpp
+CLIENT_SRC = Ejercicio5_Cliente.cpp
+SERVER_OUT = servidor
+CLIENT_OUT = cliente
 
-Ejercicio5_Cliente: Ejercicio5_Cliente.cpp
-	g++ -o Ejercicio5_Cliente Ejercicio5_Cliente.cpp
+# Compilación de todos
+all: $(SERVER_OUT) $(CLIENT_OUT)
 
-Ejercicio5_Servidor: Ejercicio5_Servidor.cpp
-	g++ -o Ejercicio5_Servidor Ejercicio5_Servidor.cpp
+# Compilar el servidor
+$(SERVER_OUT): $(SERVER_SRC)
+	$(CXX) $(CXXFLAGS) -o $(SERVER_OUT) $(SERVER_SRC)
 
+# Compilar el cliente
+$(CLIENT_OUT): $(CLIENT_SRC)
+	$(CXX) $(CXXFLAGS) -o $(CLIENT_OUT) $(CLIENT_SRC)
+
+# Limpiar archivos generados
 clean:
-	rm -f Ejercicio5_Cliente Ejercicio5_Servidor
+	rm -f $(SERVER_OUT) $(CLIENT_OUT)
