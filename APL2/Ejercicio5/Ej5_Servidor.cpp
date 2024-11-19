@@ -211,77 +211,71 @@ void thread_cliente_ejecucion(int socket_cliente, int num_jugadores) {
     }
 
     // Lógica del juego
-    int preguntas_respondidas = 0; // Contador global de preguntas respondidas
-    int total_preguntas = vec_preguntas.size() * num_jugadores;
+    for (int pregunta_index = 0; pregunta_index < cantPreguntas; ++pregunta_index) {
+        const std::string& pregunta = vec_preguntas[pregunta_index % vec_preguntas.size()];
 
-    while (juego_terminado == 0 && juego_empezo == 1) {
+        // Enviar la pregunta a todos los jugadores
+        for (int socket : sockets_clientes) {
+            std::string mensaje_pregunta = "Pregunta " + std::to_string(pregunta_index + 1) + ": " + pregunta + "\n";
+            send(socket, mensaje_pregunta.c_str(), mensaje_pregunta.length(), 0);
+        }
+
+        // Esperar las respuestas de todos los jugadores
         for (size_t i = 0; i < sockets_clientes.size(); ++i) {
-            indice_jugador_actual = i;
-            int socket_actual = sockets_clientes[indice_jugador_actual];
+            int socket_actual = sockets_clientes[i];
             std::string nickname_actual = nombres_clientes[socket_actual];
 
-            // Notificar al jugador actual que es su turno
-            std::string turno_mensaje = "Es tu turno, " + nickname_actual + "!\n";
-            send(socket_actual, turno_mensaje.c_str(), turno_mensaje.length(), 0);
+            memset(buffer, 0, sizeof(buffer));
+            int bytes_leidos = read(socket_actual, buffer, sizeof(buffer));
+            if (bytes_leidos <= 0) {
+                std::cerr << "El jugador " << nickname_actual << " se desconectó durante su turno.\n";
+                broadcastMensaje("El jugador " + nickname_actual + " se ha desconectado.\n", socket_actual);
 
-            // Enviar preguntas al jugador actual
-            for (const std::string& pregunta : vec_preguntas) {
-                send(socket_actual, pregunta.c_str(), pregunta.length(), 0);
+                close(socket_actual);
+                sockets_clientes.erase(sockets_clientes.begin() + i);
+                nombres_clientes.erase(socket_actual);
+                scores_clientes.erase(socket_actual);
 
-                // Esperar respuesta del jugador
-                memset(buffer, 0, sizeof(buffer));
-                int bytes_leidos = read(socket_actual, buffer, sizeof(buffer));
-                if (bytes_leidos <= 0) {
-                    std::cerr << "El jugador " << nickname_actual << " se desconectó durante su turno.\n";
-                    broadcastMensaje("El jugador " + nickname_actual + " se ha desconectado.\n", socket_actual);
-                    close(socket_actual);
-                    sockets_clientes.erase(sockets_clientes.begin() + indice_jugador_actual);
-                    nombres_clientes.erase(socket_actual);
-                    scores_clientes.erase(socket_actual);
-                    break;
-                }
-
-                buffer[bytes_leidos] = '\0'; // Asegurar fin de cadena
-                std::string respuesta(buffer);
-
-                // Verificar respuesta
-                size_t pos = pregunta.find(',');
-                std::string respuesta_correcta = pregunta.substr(pos + 1, pregunta.find(',', pos + 1) - pos - 1);
-                if (respuesta == respuesta_correcta) {
-                    scores_clientes[socket_actual]++;
-                    diccionario_puntajes[nickname_actual]++;
-                    send(socket_actual, "Respuesta correcta!\n", 20, 0);
-                } else {
-                    send(socket_actual, "Respuesta incorrecta.\n", 22, 0);
-                }
-
-                preguntas_respondidas++; // Incrementar preguntas respondidas
-
-                // Verificar si todas las preguntas han sido respondidas
-                if (preguntas_respondidas >= total_preguntas) {
-                    juego_terminado = 1;
-                    break;
-                }
+                --i; // Ajustar índice tras eliminar un jugador
+                continue;
             }
 
-            // Notificar que el turno terminó
-            send(socket_actual, "Tu turno terminó. Espera a que los demás jueguen.\n", 50, 0);
+            buffer[bytes_leidos] = '\0'; // Asegurar fin de cadena
+            std::string respuesta(buffer);
 
-            if (juego_terminado) {
-                break;
+            // Verificar respuesta
+            size_t pos = pregunta.find(',');
+            std::string respuesta_correcta = pregunta.substr(pos + 1, pregunta.find(',', pos + 1) - pos - 1);
+            if (respuesta == respuesta_correcta) {
+                scores_clientes[socket_actual]++;
+                diccionario_puntajes[nickname_actual]++;
+                send(socket_actual, "Respuesta correcta!\n", 20, 0);
+            } else {
+                send(socket_actual, "Respuesta incorrecta.\n", 22, 0);
             }
-        }
-
-        if (juego_terminado) {
-            broadcastMensaje("El juego ha terminado. Aquí están los resultados:\n");
-            for (const auto& [nickname, puntaje] : diccionario_puntajes) {
-                std::string mensaje_puntaje = nickname + ": " + std::to_string(puntaje) + "\n";
-                broadcastMensaje(mensaje_puntaje);
-            }
-            break;
         }
     }
+
+    // Finalizar el juego
+    broadcastMensaje("El juego ha terminado. Aquí están los resultados:\n");
+    for (const auto& [nickname, puntaje] : diccionario_puntajes) {
+        std::string mensaje_puntaje = nickname + ": " + std::to_string(puntaje) + "\n";
+        broadcastMensaje(mensaje_puntaje);
+    }
+
+    // Cerrar las conexiones de todos los jugadores
+    while (!sockets_clientes.empty()) {
+        int socket_actual = sockets_clientes.back();
+        send(socket_actual, "La partida ha terminado. Cerrando conexión...\n", 45, 0);
+        close(socket_actual);
+        sockets_clientes.pop_back();
+    }
+
+    // Limpiar estructuras de datos
+    nombres_clientes.clear();
+    scores_clientes.clear();
 }
+
 
 
 int main(int argc, char *argv[]) {
