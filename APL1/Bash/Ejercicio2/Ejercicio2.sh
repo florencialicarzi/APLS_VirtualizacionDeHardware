@@ -21,35 +21,43 @@ validar_matriz() {
     local file="$1"
     local separator="$2"
 
-    # Escapar el separador para que se maneje correctamente en la regex
-    separator=$(printf '%q' "$separator")
+    # Verificar si el archivo existe
+    if [[ ! -f "$file" ]]; then
+        echo "Error: el archivo '$file' no existe."
+        return 1
+    fi
 
     # Leer el archivo línea por línea
     while IFS= read -r line || [[ -n "$line" ]]; do
-       
-        # Eliminar el último carácter (puede ser un salto de línea o cualquier otro carácter no deseado)
-        line="${line%${line: -1}}"
+        # Eliminar el último carácter de la línea
+        line=$(echo "$line" | sed 's/.$//')
 
-        # Eliminar espacios al principio y al final de la línea para evitar falsos positivos
-        line=$(echo "$line" | xargs)
+        # Detectar el separador usado en la línea
+        local detected_separator=""
+        if [[ "$line" =~ [^0-9]*([[:punct:]])[^0-9]* ]]; then
+            detected_separator="${BASH_REMATCH[1]}"
+        fi
 
+        # Comparar con el separador proporcionado
+        if [[ "$detected_separator" != "$separator" ]]; then
+            echo "Error: el separador detectado ('$detected_separator') no coincide con el proporcionado ('$separator')."
+            return 1
+        fi
 
         # Leer cada elemento de la línea
         while IFS="$separator" read -r -a elements; do
             for element in "${elements[@]}"; do
-                # Comprobar si el elemento es un número o un separador
+                # Comprobar si el elemento es un número
                 if [[ ! "$element" =~ ^-?[0-9]+$ ]]; then
-                    echo "Error: $element no es un número válido."
+                    echo "Error: '$element' no es un número válido."
                     return 1
                 fi
             done
         done <<< "$line"
     done < "$file"
 
-    
     return 0
 }
-
 
 cantidad_columnas_por_fila(){
     matriz="$1"
@@ -234,6 +242,13 @@ do
         -m | --matriz)
             hayMatriz=1
             matriz="$2"
+
+            if [ ! -f "$matriz" ]
+            then
+                echo "El archivo no existe en el directorio enviado o no se especifico la ruta de un archivo."
+                exit 1
+            fi
+
             shift 2
             ;;
         -p | --producto)
@@ -315,7 +330,7 @@ cantidad_columnas_por_fila "$matriz" "$separador"
          exit 1
     fi
 
-archivo_salida="salida.$(basename "$matriz")"
+archivo_salida="salida_$(basename "$matriz")"
 
 
 if [[ "$transponer" -eq 1 ]]; then

@@ -1,0 +1,10 @@
+¿Qué significa la sigla "CPU" en informática?,3,Unidad de Procesamiento Gráfico,Unidad de Almacenamiento Central,Unidad Central de Proceso
+¿Cuál es el lenguaje de programación más utilizado para desarrollo web?,1,JavaScript,Python,Java
+¿Qué es un "byte" en términos de almacenamiento?,1,8 bits,16 bits,4 bits
+¿Cuál es el sistema operativo más utilizado en servidores web?,1,Linux,Windows,macOS
+¿Qué protocolo se utiliza para transferir archivos a través de Internet?,2,HTTP,FTP,TCP
+¿Qué estructura de datos sigue la lógica LIFO (Last In, First Out)?,1,Pila,Cola,Lista enlazada
+¿Qué es un "bug" en un programa de software?,3,Una característica especial,Un nuevo método de desarrollo,Un error o fallo en el código
+¿Qué tecnología es comúnmente usada para virtualizar servidores?,2,Docker,VMware,Kubernetes
+¿Qué es la "nube" en el contexto de informática?,1,Almacenamiento y procesamiento en servidores remotos,Un servidor físico,Un tipo de red local
+¿Cuál de estos lenguajes NO es orientado a objetos?,3,Python,Java,C

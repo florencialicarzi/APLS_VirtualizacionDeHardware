@@ -20,7 +20,6 @@ Ejemplo:
   ./validate_lottery.sh -d /path/to/lottery_files -a /mnt/c/Users/User/Desktop/resultados.json
 
 Nota:
-  - De no ingresarse ninguna opcion de entre -a/--archivo o -p/--pantalla, la opcion por defecto sera --pantalla
   - Cada archivo CSV de agencia debe tener el formato: id, num1, num2, num3, num4, num5. No deben tener encabezado y deben terminar con un salto de linea.
   - Los números de las jugadas y los números ganadores deben estar en el rango de 0 a 99. Dicho archivo tampoco debe tener encabezado y terminar con un salto de linea.
   - El archivo JSON de salida se generará en la misma carpeta en la que se encuentra este script. Contendrá los resultados en la siguiente estructura:
@@ -43,11 +42,26 @@ then
 fi
 
 eval set -- "$options"
+
+if [ "$1" == "--" ]
+then
+    echo "Error en los parametros, utilice la ayuda con -h | --help."
+    exit 1
+fi
+
 while true
 do
     case "$1" in
         -d | --directorio)
-            directorio="$2"
+
+            directorio=$(realpath "$2")
+
+            if [ ! -d "$directorio" ]
+            then
+                echo "El directorio ingresado para el CSV no existe."
+                exit 1
+            fi
+
             shift 2
             ;;
         -a | --archivo)
@@ -57,9 +71,19 @@ do
             fi
             archivoSalida="$2"
             salida=1
+
+            valDirectorio=$(dirname "$archivoSalida")
+
+            if [ ! -d "$valDirectorio" ]
+            then
+                echo "No existe el directorio para el archivo de salida."
+                exit 1
+            fi
+
             shift 2
             ;;
         -p | --pantalla)
+
             if [[ "$salida" -ne 0 ]]; then
                 echo "Error: No se pueden seleccionar ambas opciones -a/--archivo y -p/--pantalla a la vez."
                 exit 1
@@ -83,6 +107,17 @@ do
     esac
 done
 
+if [ -z "$directorio" ]
+then
+    echo "Debe ingresar un directorio para poder procesar la partida."
+    exit 1
+fi
+
+if [ "$salida" == "0" ]
+then
+    echo "Debe ingresar alguna de las opciones de salida, ya sea -a para archivo o -p para mostrarlo por pantalla."
+    exit 1
+fi
 
 ganadores="ganadores.csv"
 if [[ ! -f $ganadores ]]; then
@@ -106,10 +141,8 @@ for jugadas in "$directorio"/*.csv; do
       aciertos=0
         for numero in "$num1" "$num2" "$num3" "$num4" "$num5"
             do
-                echo "numero: $numero"
                 numero=$(echo "$numero" | tr -d '[:space:]')
-                if [[ $num_ganadores =~ (^|,)$numero(,|$) ]]; then
-                    echo "acierto"
+                if [[ $num_ganadores =~ (^|,)$numero(,|$) ]]; then            
                     ((aciertos++))
                 fi
        done

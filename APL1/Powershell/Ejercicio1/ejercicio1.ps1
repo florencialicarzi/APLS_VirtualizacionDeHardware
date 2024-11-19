@@ -18,16 +18,14 @@
     no se puede usar el parámetro '-a' o '-Archivo' al mismo tiempo. Si no se selecciona ninguna opcion de entre -pantalla y -archivo, esta sera la opcion por defecto
 
 .EXAMPLE
-    .\ProcesarJugadas.ps1 -Directorio "C:\Loteria\Jugadas"
-    Este comando procesará todos los archivos CSV en el directorio especificado y mostrara los resultados por pantalla, dado que no se especifico el metodo de salida.
-
-.EXAMPLE
-    .\ProcesarJugadas.ps1 -Directorio ".\archivos_agencias" -Archivo "resultados.csv"
+    .\ProcesarJugadas.ps1 -Directorio ".\archivos_agencias" -Archivo "./resultados.csv"
     Este comando procesará los archivos situados en el directorio especificado y guardara los resultados en un CSV con el nombre especificado.
+    Recorda usar comillas al mandar un path
 
 .EXAMPLE
-    .\ProcesarJugadas.ps1 -d ".\Jugadas" -p 1
+    .\ProcesarJugadas.ps1 -directorio ".\Jugadas" -pantalla
     Este comando procesará el directorio 'jugadas' y mostrará los resultados en pantalla.
+    Recorda usar comillas al mandar un path
 #>
 
 Param(
@@ -38,8 +36,46 @@ Param(
     [string]$Archivo = $null,
 
     [Parameter(Mandatory=$false)]
-    [bool]$Pantalla = 0
+    [switch]$Pantalla
 )
+
+if (-not $Archivo -and -not $Pantalla) {
+    Write-Error -Message "Debe especificar al menos el parámetro -Archivo o usar el interruptor -Pantalla junto con -Directorio."
+    exit
+}
+
+if (($Archivo -ne '') -and ($Pantalla -eq 1)) {
+    Write-Host "Error: No puede especificar -a (archivo) y -p (pantalla) juntos."
+    exit 1
+}
+
+# Validación: Asegurarse de que el directorio proporcionado exista
+if (-not (Test-Path $Directorio)) {
+    Write-Error "El Path de Directorio enviado por parámetro no existe."
+    exit 1
+}
+
+if ($Archivo) {
+    # Asegurarse de que la ruta tenga solo barras normales
+    $path = $Archivo -replace '\\', '/'   # Reemplaza \ por /
+
+    # Obtener solo el directorio base
+    if ($path.LastIndexOf('/') -gt 0) {
+        $path = $path.Substring(0, $path.LastIndexOf('/'))
+    } else {
+        $path = "."  # Si no hay barra, significa que es solo un archivo sin directorio
+    }
+
+    Write-Output = "Directorio a crear->  $path"
+
+    # Validar si el directorio existe
+    if (-not (Test-Path -Path $path)) {
+        Write-Error "El directorio para la creación del archivo no existe: $path"
+        exit 1
+    }
+}
+
+
 
 function Find-Numero() {
     param (
@@ -59,10 +95,7 @@ function Find-Numero() {
     }
 }
 
-if (($Archivo -ne '') -and ($Pantalla -eq 1)) {
-    Write-Host "Error: No puede especificar -a (archivo) y -p (pantalla) juntos."
-    exit 1
-}
+
 
 $ganadores = "ganadores.csv"
 if (-not (Test-Path $ganadores)) {
@@ -118,10 +151,14 @@ $jsonResult = [PSCustomObject]@{
 if ($Archivo -ne '') {
     $jsonResult | Out-File -FilePath $Archivo -Encoding utf8
     Write-Host "Resultados generados en el archivo $Archivo"
-} else {
-    Write-Host "Resultados finales:"
-    $formatted = $jsonResult | Out-String
-    Write-Host $formatted
-}
+} 
+else
+{
+    if($Pantalla) {
+        Write-Host "Resultados finales:"
+        $formatted = $jsonResult | Out-String
+        Write-Host $formatted
+    }
+} 
 
 Write-Host "Fin del script"
