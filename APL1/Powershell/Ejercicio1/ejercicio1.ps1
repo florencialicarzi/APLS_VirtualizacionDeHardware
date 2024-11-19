@@ -18,12 +18,14 @@
     no se puede usar el parámetro '-a' o '-Archivo' al mismo tiempo. Si no se selecciona ninguna opcion de entre -pantalla y -archivo, esta sera la opcion por defecto
 
 .EXAMPLE
-    .\ProcesarJugadas.ps1 -Directorio ".\archivos_agencias" -Archivo "resultados.csv"
+    .\ProcesarJugadas.ps1 -Directorio ".\archivos_agencias" -Archivo "./resultados.csv"
     Este comando procesará los archivos situados en el directorio especificado y guardara los resultados en un CSV con el nombre especificado.
+    Recorda usar comillas al mandar un path
 
 .EXAMPLE
     .\ProcesarJugadas.ps1 -directorio ".\Jugadas" -pantalla
     Este comando procesará el directorio 'jugadas' y mostrará los resultados en pantalla.
+    Recorda usar comillas al mandar un path
 #>
 
 Param(

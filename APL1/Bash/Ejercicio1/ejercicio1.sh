@@ -71,6 +71,15 @@ do
             fi
             archivoSalida="$2"
             salida=1
+
+            valDirectorio=$(dirname "$archivoSalida")
+
+            if [ ! -d "$valDirectorio" ]
+            then
+                echo "No existe el directorio para el archivo de salida."
+                exit 1
+            fi
+
             shift 2
             ;;
         -p | --pantalla)
