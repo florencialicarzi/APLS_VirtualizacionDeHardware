@@ -18,10 +18,6 @@
     no se puede usar el parámetro '-a' o '-Archivo' al mismo tiempo. Si no se selecciona ninguna opcion de entre -pantalla y -archivo, esta sera la opcion por defecto
 
 .EXAMPLE
-    .\ProcesarJugadas.ps1 -Directorio "C:\Loteria\Jugadas"
-    Este comando procesará todos los archivos CSV en el directorio especificado y mostrara los resultados por pantalla, dado que no se especifico el metodo de salida.
-
-.EXAMPLE
     .\ProcesarJugadas.ps1 -Directorio ".\archivos_agencias" -Archivo "resultados.csv"
     Este comando procesará los archivos situados en el directorio especificado y guardara los resultados en un CSV con el nombre especificado.
 
