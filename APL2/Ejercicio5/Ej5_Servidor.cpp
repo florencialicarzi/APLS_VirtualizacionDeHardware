@@ -210,6 +210,7 @@ void thread_cliente_ejecucion(int socket_cliente, int num_jugadores) {
 
     // Verificar si el juego ya empezó
     if (juego_empezo == 1) {
+        std::cout << "Ultimo Cliente desconectado, ya existe partida en curso." << std::endl;
         std::string mensaje = "Ya hay un juego en curso. Conéctate más tarde.\n";
         send(socket_cliente, mensaje.c_str(), mensaje.length(), 0);
         close(socket_cliente);
@@ -305,6 +306,11 @@ void thread_cliente_ejecucion(int socket_cliente, int num_jugadores) {
         sockets_clientes.clear();
         nombres_clientes.clear();
         scores_clientes.clear();
+        diccionario_puntajes.clear();
+        puntuacion_global = 0;
+        juego_empezo = 0;
+
+        std::cout << "Partida Finalizada, esperando a nuevas conexiones." << std::endl;
     }
 }
 
