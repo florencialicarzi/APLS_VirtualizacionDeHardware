@@ -1,14 +1,3 @@
-/*
- >>>                 Virtualización de Hardware          <<<
- >>>                         APL 2                       <<<
- >>>                 Ejercicio 5 - Cliente               <<<
-------           Integrantes del Grupo:                  ------
-------   Alejandro Ruiz               DNI 42375350       ------
-------   Luis Saini                   DNI 43744596       ------
-------   Matias Alejandro Gomez       DNI 42597132       ------
-------   Mariano Rodriguez Bustos     DNI 42194177       ------
-------                Cuatrimeste 01-2024                ------*/
-
 #include <iostream>
 #include <string>
 #include <cstring>
