@@ -41,6 +41,22 @@ Param(
     [switch]$Pantalla
 )
 
+if (-not $Archivo -and -not $Pantalla) {
+    Write-Error -Message "Debe especificar al menos el parámetro -Archivo o usar el interruptor -Pantalla junto con -Directorio."
+    exit
+}
+
+if (($Archivo -ne '') -and ($Pantalla -eq 1)) {
+    Write-Host "Error: No puede especificar -a (archivo) y -p (pantalla) juntos."
+    exit 1
+}
+
+# Validación: Asegurarse de que el directorio proporcionado exista
+if (-not (Test-Path $Directorio)) {
+    Write-Error "El Path de Directorio enviado por parámetro no existe."
+    exit 1
+}
+
 function Find-Numero() {
     param (
         [string]$archivo,
@@ -59,10 +75,7 @@ function Find-Numero() {
     }
 }
 
-if (($Archivo -ne '') -and ($Pantalla -eq 1)) {
-    Write-Host "Error: No puede especificar -a (archivo) y -p (pantalla) juntos."
-    exit 1
-}
+
 
 $ganadores = "ganadores.csv"
 if (-not (Test-Path $ganadores)) {
