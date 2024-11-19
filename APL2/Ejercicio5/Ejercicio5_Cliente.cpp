@@ -1,186 +1,115 @@
-// 43895910 Gonzalez, Luca Sebastian
-// 43458509 Licarzi, Florencia Berenice
-// 42597132 Gonzalez, Victor Matias
-// 42364617 Polito, Thiago
-
 #include <iostream>
-#include <stdio.h>
-#include <unistd.h>
-#include <stdlib.h>
-#include <string.h>
-#include <time.h>
-#include <sys/socket.h>
-#include <sys/types.h>
-#include <netinet/in.h>
+#include <string>
+#include <cstring>
 #include <arpa/inet.h>
+#include <unistd.h>
+#include <getopt.h>
+#include <sys/select.h>
 #include <netdb.h>
-#include <fstream>
-#include <semaphore.h>
-#include <fcntl.h>
+#include <arpa/inet.h>
 
-using namespace std;
 
-void procesarParametros(int argc, char* argv[], string& nickname, int &puerto, string& direccionIP)
-{
-    if(string(argv[1]) == "-h" || string(argv[1]) == "--help")
-    {
-        cout << "Esta es la ayuda del script, asegurese de que este ingresando todos los parametros correctamente." << "\n" <<
-                 "-n | -nickname Pepe / -p | --puerto 5500 / -s | --servidor 127.0.0.1" << "\n" <<
-                 "Todos estos parametros son requeridos para que el programa pueda funcionar correctamente." << endl;
-        exit(0);
-    }
-    else if(argc < 7)
-    {
-        cout << "La cantidad de parametros es insuficiente, revise la ayuda con -h | --help si lo necesita." << endl;
-        exit(1);
-    }
+int main(int argc, char *argv[]) {
+    std::string nickname;
+    std::string ip_servidor;
+    int puerto = 0;
 
-    for(int i = 1; i < argc; i++)
-    {
-        if(string(argv[i]) == "-n" || string(argv[i]) == "--nickname")
-        {
-            if(i + 1 < argc)
-            {
-                std::string nick(argv[++i]);
-                nickname = nick;
-            }
-            else
-            {
-                cerr << "Error. Se esperaba un valor para -n | --nickname." << endl;
-                exit(1);
-            }
-        }
-
-        if(string(argv[i]) == "-p" || string(argv[i]) == "--puerto")
-        {
-            if(i + 1 < argc)
-            {
-                puerto = atoi(argv[++i]);
-            }
-            else
-            {
-                cerr << "Error. Se esperaba un valor para -p | --puerto." << endl;
-                exit(1);
-            }
-        }
-
-        if(string(argv[i]) == "-s" || string(argv[i]) == "--servidor")
-        {
-            if(i + 1 < argc)
-            {
-                std::string serv(argv[++i]);
-                direccionIP = serv;
-            }
-            else
-            {
-                cerr << "Error. Se esperaba un valor para -s | --servidor." << endl;
-                exit(1);
-            }
+    int opt;
+    while ((opt = getopt(argc, argv, "hn:s:p:")) != -1) {
+        switch (opt) {
+            case 'h':
+                std::cerr << "Modo de uso: " << argv[0] << " -n <nickname> -s <ip_servidor> -p <puerto>" << std::endl;
+                std::cout << "Opciones:" << std::endl;
+                std::cout << "  -n <nickname>         Nombre de usuario que usara el jugador" << std::endl;
+                std::cout << "  -s <ip_servidor>      Ip del servidor a conectarse" << std::endl;
+                std::cout << "  -p <puerto>           Puerto del servidor a conectarse" << std::endl;
+                exit(EXIT_SUCCESS);
+            case 'n':
+                nickname = optarg;
+                break;
+            case 's':
+                ip_servidor = optarg;
+                break;
+            case 'p':
+                puerto = std::stoi(optarg);
+                break;
+            default:
+                std::cerr << "Modo de uso: " << argv[0] << " -n <nickname> -s <ip_servidor> -p <puerto>" << std::endl;
+                exit(EXIT_FAILURE);
         }
     }
-}
 
-int main(int argc, char* argv[])
-{  
+    if (nickname.empty() || ip_servidor.empty() || puerto == 0) {
+        std::cerr << "Todos los parametros deben ser especificados (nickname, IP Servidor y puerto)" << std::endl;
+        std::cerr << "Modo de uso: " << argv[0] << " -n <nickname> -s <ip_servidor> -p <puerto>" << std::endl;
+        exit(EXIT_FAILURE);
+    }
+
+    int sock = 0, valread;
+    struct sockaddr_in serv_addr;
+    char buffer[1024] = {0};
     
-    char buffer[2000];
-    int bytesRecibidos = 0;
-    string mensaje;
-    string res;
-    int cont = 0;
-    int pos;
-    int preguntas;
-    bool flagErr = false;
-    string nickname;
-    int puerto;
+    if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+        std::cout << "Error en la creacion del socket" << std::endl;
+        return -1;
+    }
+
+    serv_addr.sin_family = AF_INET;
+    serv_addr.sin_port = htons(puerto);
+
     struct hostent* he;
-    struct in_addr **addr_list;
-    string servidor;
-    
+    struct in_addr **addr_list;    
 
-    procesarParametros(argc, argv, nickname, puerto, servidor);
-
-
-    struct sockaddr_in socketConfig; //! Es una estructura que nos sirve para configurar el socket.
-    memset(&socketConfig, '0', sizeof(socketConfig)); //! Seteamos la memoria en 0.
-    
-    if(servidor.find('.') == std::string::npos)
+    if(ip_servidor.find('.') == std::string::npos)
     {
-        he = gethostbyname(servidor.c_str());
+        he = gethostbyname(ip_servidor.c_str());
         addr_list = (struct in_addr**)he->h_addr_list;
-        socketConfig.sin_addr = *addr_list[0];
+        serv_addr.sin_addr = *addr_list[0];
     }
     else
     {
-        inet_pton(AF_INET, servidor.c_str(), &socketConfig.sin_addr); //* Lo que hace este comando es traducir a binario la direccion ipv4 que nos llega por parametro.
+        inet_pton(AF_INET, ip_servidor.c_str(), &serv_addr.sin_addr); //* Lo que hace este comando es traducir a binario la direccion ipv4 que nos llega por parametro.
     }
 
-    socketConfig.sin_family = AF_INET; //* Le estamos diciendo que vamos a aceptar direcciones IPv4. (Sino seria AF_INET6).
-    socketConfig.sin_port = htons(puerto); //* Puerto al cual escuchamos.
+    if (connect(sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
+        std::cout << "La conexion ha fallado, no ha sido posible conectarlo con el servidor" << std::endl;
+        return -1;
+    }
 
-    int socketCommunication = socket(AF_INET, SOCK_STREAM, 0); //! Creamos el socket. | SOCK_STREAM indica que es TCP (orientado a conexion).
+    send(sock, nickname.c_str(), nickname.length(), 0);
 
-    int resultadoConexion = connect(socketCommunication, (struct sockaddr*)&socketConfig, sizeof(socketConfig)); //! Tratamos de conectarnos.
+    fd_set readfds;
 
-    //? Una vez que nos conectamos, vamos a intentar leer lo que el servidor nos envie.
+    while (true) {
+        FD_ZERO(&readfds);
+        FD_SET(sock, &readfds);
+        FD_SET(STDIN_FILENO, &readfds);
 
-    cout << "Bievenido jugador: " << nickname << endl;
+        int max_sd = sock > STDIN_FILENO ? sock : STDIN_FILENO;
 
-    bytesRecibidos = read(socketCommunication, buffer, sizeof(buffer)-1);
-    buffer[bytesRecibidos] = 0;
-    preguntas = atoi(buffer);
+        int activity = select(max_sd + 1, &readfds, NULL, NULL, NULL);
 
-    while(preguntas > 0) // Copio lo que me mande el servidor.
-    {
-
-        bytesRecibidos = read(socketCommunication, buffer, sizeof(buffer)-1);
-        buffer[bytesRecibidos] = 0;
-
-        if(bytesRecibidos == 0)
-        {
-            cout << "El servidor ha finalizado la conexion." << endl;
-            flagErr = true;
-            break;
+        if (activity < 0 && errno != EINTR) {
+            std::cout << "Error en select" << std::endl;
         }
 
-        std::string cad(buffer);
-
-        while((pos = cad.find(',')) != std::string::npos)
-        { 
-            mensaje = cad.substr(0, pos);
-            cad.erase(0, pos+1);
-
-            if(cont != 1)
-            {
-                cout << mensaje << "\n" << endl;
+        if (FD_ISSET(sock, &readfds)) {
+            memset(buffer, 0, 1024);
+            valread = read(sock, buffer, 1024);
+            if (valread <= 0) {
+                std::cout << "Se ha desconectado del servidor" << std::endl;
+                break;
             }
-
-            cont++;
+            std::cout << buffer << std::endl;
         }
 
-        cout << cad << endl;
-
-        cout << "Ingrese su respuesta: ";
-        getline(cin, res);
-        write(socketCommunication, res.c_str(), res.length());
-
-        cont = 0;
-        preguntas --;
+        if (FD_ISSET(STDIN_FILENO, &readfds)) {
+            std::string input;
+            std::getline(std::cin, input);
+            send(sock, input.c_str(), input.length(), 0);
+        }
     }
 
-    if(!flagErr)
-    {
-        bytesRecibidos = read(socketCommunication, buffer, sizeof(buffer)-1);
-        buffer[bytesRecibidos] = 0;
-        cout << "El puntaje obtenido es: " << buffer << endl;
-
-        bytesRecibidos = read(socketCommunication, buffer, sizeof(buffer)-1);
-        buffer[bytesRecibidos] = 0;
-        cout << "\n" << buffer << endl;
-    }
-
-    shutdown(socketCommunication, SHUT_RDWR);
-    close(socketCommunication);
-
+    close(sock);
     return 0;
 }
