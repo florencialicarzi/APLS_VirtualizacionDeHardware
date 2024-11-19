@@ -38,7 +38,7 @@ Param(
     [string]$Archivo = $null,
 
     [Parameter(Mandatory=$false)]
-    [bool]$Pantalla = 0
+    [switch]$Pantalla
 )
 
 function Find-Numero() {
@@ -118,10 +118,14 @@ $jsonResult = [PSCustomObject]@{
 if ($Archivo -ne '') {
     $jsonResult | Out-File -FilePath $Archivo -Encoding utf8
     Write-Host "Resultados generados en el archivo $Archivo"
-} else {
-    Write-Host "Resultados finales:"
-    $formatted = $jsonResult | Out-String
-    Write-Host $formatted
-}
+} 
+else
+{
+    if($Pantalla) {
+        Write-Host "Resultados finales:"
+        $formatted = $jsonResult | Out-String
+        Write-Host $formatted
+    }
+} 
 
 Write-Host "Fin del script"
