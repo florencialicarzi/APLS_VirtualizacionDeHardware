@@ -1,0 +1,20 @@
+{
+  "5_aciertos": [
+    {
+      "agencia": "mondongo",
+      "jugada": "4"
+    }
+  ],
+  "4_aciertos": [
+    {
+      "agencia": "mondongo",
+      "jugada": "5"
+    }
+  ],
+  "3_aciertos": [
+    {
+      "agencia": "empresaDelCarajo",
+      "jugada": "1"
+    }
+  ]
+}

@@ -57,6 +57,17 @@ if (-not (Test-Path $Directorio)) {
     exit 1
 }
 
+# Obtener solo el directorio base
+$path = $archivo.Substring(0, $archivo.LastIndexOf('/'))
+Write-Output $path
+
+# Validar si el directorio existe
+if (-not (Test-Path -Path $path)) {
+    Write-Error "El directorio para la creacion del archivo no existe: $path"
+    exit 1
+}
+
+
 function Find-Numero() {
     param (
         [string]$archivo,
