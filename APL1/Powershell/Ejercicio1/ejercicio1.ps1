@@ -53,16 +53,18 @@ if (-not (Test-Path $Directorio)) {
     exit 1
 }
 
-if ($archivo) {
+if ($Archivo) {
     # Asegurarse de que la ruta tenga solo barras normales
-    $path = $archivo -replace '\\', '/'   # Reemplaza \ por /
+    $path = $Archivo -replace '\\', '/'   # Reemplaza \ por /
 
     # Obtener solo el directorio base
-    if ($archivo.LastIndexOf('/') -gt 0) {
-        $path = $archivo.Substring(0, $archivo.LastIndexOf('/'))
+    if ($path.LastIndexOf('/') -gt 0) {
+        $path = $path.Substring(0, $path.LastIndexOf('/'))
     } else {
         $path = "."  # Si no hay barra, significa que es solo un archivo sin directorio
     }
+
+    Write-Output = "Directorio a crear->  $path"
 
     # Validar si el directorio existe
     if (-not (Test-Path -Path $path)) {
