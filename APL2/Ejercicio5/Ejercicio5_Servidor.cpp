@@ -53,7 +53,7 @@ void procesarSolicitud(int numCliente, int socketCommunication, int cantPregunta
     string puntajeCliente;
     string puntajeGanador;
     string cGanador;
-
+/*
     {
         unique_lock<mutex> lock(mtx);
 
@@ -72,7 +72,7 @@ void procesarSolicitud(int numCliente, int socketCommunication, int cantPregunta
         lock.unlock();
 
     }
-
+*/
     // Cosiderar poner un sleep(2) y un cout antes que diga "Iniciando juego.. "
 
     write(socketCommunication, pregClientes.c_str(), pregClientes.length());
