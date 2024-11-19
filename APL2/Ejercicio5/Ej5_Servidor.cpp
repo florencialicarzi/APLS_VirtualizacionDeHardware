@@ -142,13 +142,39 @@ void cargarPreguntas(const string& nombreArchivo) {
 void handle_signal(int sig) {
     if (sig == SIGUSR1) {
         std::cout << "Señal SIGUSR1 recibida." << std::endl;
-        if(juego_empezo==1){
-            std::cout << "Hay una partida en curso, no se puede cerrar el servidor" << std::endl;
-        }else{
-             sigusr1_received = true;
-        }
-       
+        std::cout << "Finalizacion abrupta del servidor. Desconectando clientes..." << std::endl;
+        sigusr1_received = true;
     }
+
+    if (sigusr1_received) {
+    std::cout << "Señal SIGUSR1 recibida. Finalizando el servidor..." << std::endl;
+
+    eliminar_threads = true;
+    std::this_thread::sleep_for(std::chrono::milliseconds(500)); // Esperar un momento
+
+    // Cerrar todos los sockets de cliente
+    for (int socket : sockets_clientes) {
+        send(socket, "El servidor se está cerrando.\n", 30, 0);
+        close(socket);
+        std::cout << "Cerrando socket cliente: " << socket << std::endl;
+    }
+
+    // Esperar a que los threads terminen
+    for (std::thread &t : client_threads) {
+        if (t.joinable()) {
+            t.join();
+        }
+    }
+
+    // Limpiar estructuras
+    sockets_clientes.clear();
+    client_threads.clear();
+    close(server_fd);
+
+    std::cout << "Servidor cerrado correctamente.\n";
+    std::exit(0); // Salir sin lanzar excepciones
+}
+
 }
 
 
@@ -208,15 +234,23 @@ void thread_cliente_ejecucion(int socket_cliente, int num_jugadores) {
 
     nombres_clientes[socket_cliente] = nickname;
     scores_clientes[socket_cliente] = 0;
-    sockets_clientes.push_back(socket_cliente);
-    cantidadDeJugadoresActuales++;
+
+    {
+        std::lock_guard<std::mutex> lock(mtx);
+        sockets_clientes.push_back(socket_cliente);
+        cantidadDeJugadoresActuales++;
+    }
 
     // Verificar si el juego ya empezó
     if (juego_empezo == 1) {
         std::string mensaje = "Ya hay un juego en curso. Conéctate más tarde.\n";
         send(socket_cliente, mensaje.c_str(), mensaje.length(), 0);
         close(socket_cliente);
-        sockets_clientes.erase(std::remove(sockets_clientes.begin(), sockets_clientes.end(), socket_cliente), sockets_clientes.end());
+        {
+            std::lock_guard<std::mutex> lock(mtx);
+            sockets_clientes.erase(std::remove(sockets_clientes.begin(), sockets_clientes.end(), socket_cliente), sockets_clientes.end());
+            cantidadDeJugadoresActuales--;
+        }
         return;
     }
 
@@ -265,6 +299,16 @@ void thread_cliente_ejecucion(int socket_cliente, int num_jugadores) {
                 nombres_clientes.erase(socket_cliente);
                 scores_clientes.erase(socket_cliente);
                 cantidadDeJugadoresActuales--;
+
+                if(cantidadDeJugadoresActuales == 0)
+                {
+                     // Limpiar estructuras y variables globales
+                    {
+                        juego_empezo = 0;
+                         std::cout << "Todos los jugadores se desconectaron. Reiniciando el servidor para nuevas conexiones.\n";
+                    }
+
+                }
             }
 
             return; // Salir del bucle para este jugador
@@ -293,38 +337,33 @@ void thread_cliente_ejecucion(int socket_cliente, int num_jugadores) {
         cantJugadoresPartidaFinalizada++;
     }
 
-    // Esperar a que todos los jugadores terminen o se desconecten
-    while (true) {
-        {
-            std::lock_guard<std::mutex> lock(mtx);
-            if (cantidadDeJugadoresActuales == cantJugadoresPartidaFinalizada) {
-                break;
-            }
-        }
-        std::this_thread::sleep_for(std::chrono::milliseconds(500));
-    }
-
-    // Mostrar resultados cuando todos terminen
+    // Finalizar el juego si todos los jugadores han terminado o se han desconectado
     if (cantidadDeJugadoresActuales == cantJugadoresPartidaFinalizada) {
         broadcastMensaje("El juego ha terminado. Aquí están los resultados:\n");
         for (const auto& [nickname, puntaje] : diccionario_puntajes) {
             std::string mensaje_puntaje = nickname + ": " + std::to_string(puntaje) + "\n";
             broadcastMensaje(mensaje_puntaje);
-            
         }
 
         // Cerrar las conexiones de todos los jugadores restantes
         for (int socket : sockets_clientes) {
-            send(socket, "La partida ha terminado. Cerrando conexión...\n", 45, 0);          
+            send(socket, "La partida ha terminado. Cerrando conexión...\n", 45, 0);
             close(socket);
         }
 
-        // Limpiar estructuras de datos
-        sockets_clientes.clear();
-        nombres_clientes.clear();
-        scores_clientes.clear();
-        juego_empezo == 0;
-        std::cout << "Partida Finalizada, esperando a nuevas conexiones." << std::endl;
+        // Limpiar estructuras y variables globales
+        {
+            std::lock_guard<std::mutex> lock(mtx);
+            sockets_clientes.clear();
+            nombres_clientes.clear();
+            scores_clientes.clear();
+            diccionario_puntajes.clear();
+            cantidadDeJugadoresActuales = 0;
+            cantJugadoresPartidaFinalizada = 0;
+            juego_empezo = 0;
+        }
+
+        std::cout << "Partida finalizada. Servidor listo para nuevas conexiones.\n";
     }
 }
 
@@ -387,61 +426,77 @@ int main(int argc, char *argv[]) {
     std::vector<std::thread> client_threads;
 
     while (true) {
-        try {
-            if (sigusr1_received) {
-                if(int(sockets_clientes.size())!=0){
-                    std::cout << "Señal recibida para finalizar el servidor." << std::endl;
-                    eliminar_threads = true;
-                    std::this_thread::sleep_for(std::chrono::seconds(1));
-                    // Cerrar todos los sockets de cliente
-                    for (int socket : sockets_clientes) {
-                        send(socket, "El servidor se está cerrando.\n", 30, 0);
-                        close(socket);
-                        std::cout << "Cerrando socket cliente: " << socket << std::endl;
-                    }
-                    eliminar_threads = true;
-                    std::this_thread::sleep_for(std::chrono::seconds(1));
-                    sockets_clientes.clear();
-                    client_threads.clear();
-                    close(server_fd);
-                    std::cout << "Servidor cerrado." << std::endl;
-                    exit(0);
+    try {
+        if (sigusr1_received) {
+            if (int(sockets_clientes.size()) != 0) {
+                std::cout << "Señal recibida para finalizar el servidor." << std::endl;
+                eliminar_threads = true;
+                std::this_thread::sleep_for(std::chrono::seconds(1));
+                // Cerrar todos los sockets de cliente
+                for (int socket : sockets_clientes) {
+                    send(socket, "El servidor se está cerrando.\n", 30, 0);
+                    close(socket);
+                    std::cout << "Cerrando socket cliente: " << socket << std::endl;
                 }
-                else{
-                    close(server_fd);
-                    std::cout << "Servidor cerrado." << std::endl;
-                    exit(0);
-                }
+                eliminar_threads = true;
+                std::this_thread::sleep_for(std::chrono::seconds(1));
+                sockets_clientes.clear();
+                client_threads.clear();
+                close(server_fd);
+                std::cout << "Servidor cerrado." << std::endl;
+                exit(0);
+            } else {
+                close(server_fd);
+                std::cout << "Servidor cerrado." << std::endl;
+                exit(0);
             }
-
-            int activity = poll(poll_fds.data(), poll_fds.size(), 2000); // Timeout de 1 segundo
-
-            if (activity < 0 && errno != EINTR) {
-                std::cerr << "Error en poll" << std::endl;
-                break;
-            }
-
-            if (activity > 0) {
-                if (poll_fds[0].revents & POLLIN) {
-                    int new_socket = accept(server_fd, (struct sockaddr *)&address, (socklen_t*)&addrlen);
-                    if (new_socket < 0) {
-                        perror("accept");
-                        exit(EXIT_FAILURE);
-                    }
-                    std::cout << "Nueva conexión aceptada." << std::endl;
-
-                    pollfd client_poll_fd;
-                    client_poll_fd.fd = new_socket;
-                    client_poll_fd.events = POLLIN;
-                    poll_fds.push_back(client_poll_fd);
-
-                    client_threads.push_back(std::thread(thread_cliente_ejecucion, new_socket, num_jugadores));
-                }
-            }
-        } catch (const std::exception& e) {
-            std::cerr << "Excepcion: " << e.what() << std::endl;
         }
+
+        int activity = poll(poll_fds.data(), poll_fds.size(), 2000); // Timeout de 1 segundo
+
+        if (activity < 0 && errno != EINTR) {
+            std::cerr << "Error en poll" << std::endl;
+            break;
+        }
+
+        if (activity > 0) {
+            if (poll_fds[0].revents & POLLIN) {
+                int new_socket = accept(server_fd, (struct sockaddr*)&address, (socklen_t*)&addrlen);
+                if (new_socket < 0) {
+                    perror("accept");
+                    exit(EXIT_FAILURE);
+                }
+                std::cout << "Nueva conexión aceptada.\n";
+
+                pollfd client_poll_fd;
+                client_poll_fd.fd = new_socket;
+                client_poll_fd.events = POLLIN;
+                poll_fds.push_back(client_poll_fd);
+
+                client_threads.push_back(std::thread(thread_cliente_ejecucion, new_socket, num_jugadores));
+            }
+        }
+
+        // Verificar si todos los jugadores se desconectaron
+        {
+            std::lock_guard<std::mutex> lock(mtx);
+            if (cantidadDeJugadoresActuales == 0 && juego_empezo == 0) {
+
+                // Resetear variables globales
+                sockets_clientes.clear();
+                nombres_clientes.clear();
+                scores_clientes.clear();
+                diccionario_puntajes.clear();
+                cantJugadoresPartidaFinalizada = 0;
+                juego_empezo = 0;
+            }
+        }
+
+    } catch (const std::exception& e) {
+        std::cerr << "Excepción: " << e.what() << std::endl;
     }
+}
+
 
     return 0;
 }
