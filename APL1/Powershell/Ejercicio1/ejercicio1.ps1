@@ -53,15 +53,24 @@ if (-not (Test-Path $Directorio)) {
     exit 1
 }
 
-# Obtener solo el directorio base
-$path = $archivo.Substring(0, $archivo.LastIndexOf('/'))
-Write-Output $path
+if ($archivo) {
+    # Asegurarse de que la ruta tenga solo barras normales
+    $path = $archivo -replace '\\', '/'   # Reemplaza \ por /
 
-# Validar si el directorio existe
-if (-not (Test-Path -Path $path)) {
-    Write-Error "El directorio para la creacion del archivo no existe: $path"
-    exit 1
+    # Obtener solo el directorio base
+    if ($archivo.LastIndexOf('/') -gt 0) {
+        $path = $archivo.Substring(0, $archivo.LastIndexOf('/'))
+    } else {
+        $path = "."  # Si no hay barra, significa que es solo un archivo sin directorio
+    }
+
+    # Validar si el directorio existe
+    if (-not (Test-Path -Path $path)) {
+        Write-Error "El directorio para la creación del archivo no existe: $path"
+        exit 1
+    }
 }
+
 
 
 function Find-Numero() {
