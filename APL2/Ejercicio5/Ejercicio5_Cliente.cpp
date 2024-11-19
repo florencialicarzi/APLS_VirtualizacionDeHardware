@@ -1,3 +1,8 @@
+// 43895910 Gonzalez, Luca Sebastian
+// 43458509 Licarzi, Florencia Berenice
+// 42597132 Gonzalez, Victor Matias
+// 42364617 Polito, Thiago
+
 #include <iostream>
 #include <string>
 #include <cstring>
